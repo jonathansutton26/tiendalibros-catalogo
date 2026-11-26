@@ -1,0 +1,40 @@
+name: Catalogo diario tiendalibros
+on:
+  schedule:
+    - cron: "0 9 * * *"   # 06:00 hora Argentina
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Generar catalogo
+        run: python3 build_catalog.py --out site
+      - name: Validar (no publicar si vino vacío o muy chico)
+        run: |
+          n=$(($(wc -l < site/catalogo.csv) - 1))
+          echo "filas: $n"
+          test "$n" -gt 40000
+      - name: Index
+        run: |
+          echo '<a href="catalogo.csv">catalogo.csv</a> | <a href="catalogo.json">catalogo.json</a>' > site/index.html
+          touch site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
