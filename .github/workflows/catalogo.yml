@@ -11,12 +11,9 @@ concurrency:
   group: pages
   cancel-in-progress: false
 jobs:
-  build-deploy:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,7 +21,7 @@ jobs:
           python-version: "3.12"
       - name: Generar catalogo
         run: python3 build_catalog.py --out site
-      - name: Validar (no publicar si vino vacío o muy chico)
+      - name: Validar (no publicar si vino vacio o muy chico)
         run: |
           n=$(($(wc -l < site/catalogo.csv) - 1))
           echo "filas: $n"
@@ -36,5 +33,12 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
